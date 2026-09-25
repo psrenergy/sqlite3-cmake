@@ -7,21 +7,30 @@ on:
   pull_request:
     branches:
       - master
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: ${{ matrix.type.name }}
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / ${{ matrix.type.name }}
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         type:
-          - name: Build shared library
-            cmake_args: -DBUILD_SHARED_LIBS=ON
-          - name: Build static library
+          - name: static (defaults)
             cmake_args: -DBUILD_SHARED_LIBS=OFF
+          - name: shared, not threadsafe
+            cmake_args: -DBUILD_SHARED_LIBS=ON -Dsqlite3_ENABLE_THREADSAFE=OFF
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Check out code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -31,3 +40,16 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release
+
+      - name: Install
+        run: cmake --install build --config Release --prefix "${PWD}/install"
+
+      - name: Build smoke test against the installed package
+        run: |
+          cmake -S test -B build-test -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${PWD}/install"
+          cmake --build build-test --config Release
+
+      - name: Run smoke test
+        run: |
+          export PATH="${PWD}/install/bin:${PATH}"
+          ctest --test-dir build-test -C Release --output-on-failure -V

@@ -1,0 +1,30 @@
+name: Tag release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - CMakeLists.txt
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag SQLite version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create tag if missing
+        run: |
+          VERSION=$(grep -oP 'set\(SQLITE3_VERSION "\K[^"]+' CMakeLists.txt)
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null; then
+            echo "😌 v${VERSION} already exists." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
+          echo "🏷️ Tagged v${VERSION}." >> "${GITHUB_STEP_SUMMARY}"

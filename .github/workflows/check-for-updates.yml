@@ -10,6 +10,7 @@ jobs:
     name: Check for updates
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -38,6 +39,7 @@ jobs:
             sed -i "s/set(SQLITE3_VERSION \"${CURRENT_VERSION}\")/set(SQLITE3_VERSION \"${NEW_VERSION}\")/" CMakeLists.txt
             sed -i "s!set(SQLITE3_DOWNLOAD_URL \".*\")!set(SQLITE3_DOWNLOAD_URL \"${NEW_URL}\")!" CMakeLists.txt
             sed -i "s/set(SQLITE3_SHA3_256 \".*\")/set(SQLITE3_SHA3_256 \"${NEW_HASH}\")/" CMakeLists.txt
+            sed -i -E "s/(GIT_TAG v)[0-9.]+/\1${NEW_VERSION}/; s/(sqlite3-cmake@)[0-9.]+/\1${NEW_VERSION}/" README.md
             echo "KEEP_GOING=yes" >> "${GITHUB_ENV}"
             echo "🚀 Creating a pull request." >> "${GITHUB_STEP_SUMMARY}"
           else
@@ -56,16 +58,23 @@ jobs:
 
             - [Download](https://sqlite.org/download.html)
             - [Changelog](https://sqlite.org/changes.html)
-          branch: "update-sqlite-${{ env.NEW_VERSION }}"
+          branch: update-sqlite
           labels: dependencies
-          token: ${{ secrets.REPOSITORY_ACCESS_TOKEN }}
         if: env.KEEP_GOING == 'yes'
 
-      - name: Conclusion
-        if: env.KEEP_GOING == 'yes'
+      # PRs opened with GITHUB_TOKEN do not trigger pull_request workflows; workflow_dispatch is exempt,
+      # and its checks attach to the PR head commit.
+      - name: Run build on the pull request
+        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
         run: |
-          if [ ${{ steps.cpr.outputs.pull-request-number }} != "" ]; then
-            echo "ℹ️ Pull request: ${{ steps.cpr.outputs.pull-request-url }}."
-          else
-            echo "⚠️ No pull request created."
-          fi
+          gh workflow run build.yml --ref update-sqlite
+          echo "ℹ️ Pull request: ${{ steps.cpr.outputs.pull-request-url }}." >> "${GITHUB_STEP_SUMMARY}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # GitHub disables scheduled workflows after 60 days without repository activity; SQLite releases can be further apart.
+      - name: Keep schedule alive
+        if: always()
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/check-for-updates.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
