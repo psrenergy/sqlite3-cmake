@@ -6,25 +6,28 @@ on:
       - master
     paths:
       - CMakeLists.txt
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   tag:
-    name: Tag SQLite version
+    name: Release SQLite version
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Create tag if missing
-        run: |
-          VERSION=$(grep -oP 'set\(SQLITE3_VERSION "\K[^"]+' CMakeLists.txt)
-          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null; then
-            echo "😌 v${VERSION} already exists." >> "${GITHUB_STEP_SUMMARY}"
-            exit 0
-          fi
-          git tag "v${VERSION}"
-          git push origin "v${VERSION}"
-          echo "🏷️ Tagged v${VERSION}." >> "${GITHUB_STEP_SUMMARY}"
+      - name: Read version
+        id: version
+        run: echo "version=$(grep -oP 'set\(SQLITE3_VERSION "\K[^"]+' CMakeLists.txt)" >> "${GITHUB_OUTPUT}"
+
+      - name: Create release
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
+        with:
+          tag: v${{ steps.version.outputs.version }}
+          commit: ${{ github.sha }}
+          generateReleaseNotes: true
+          skipIfReleaseExists: true
+          makeLatest: "true"
