@@ -10,7 +10,7 @@ Maintained fork of the archived [sjinks/sqlite3-cmake](https://github.com/sjinks
 
 ```cmake
 include(FetchContent)
-FetchContent_Declare(sqlite3 GIT_REPOSITORY https://github.com/psrenergy/sqlite3-cmake GIT_TAG v3.50.2)
+FetchContent_Declare(sqlite3 GIT_REPOSITORY https://github.com/psrenergy/sqlite3-cmake GIT_TAG v3.53.4)
 FetchContent_MakeAvailable(sqlite3)
 
 target_link_libraries(mytarget SQLite::SQLite3)
@@ -22,7 +22,7 @@ target_link_libraries(mytarget SQLite::SQLite3)
 file(DOWNLOAD https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.42.1/CPM.cmake ${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 
-CPMAddPackage("gh:psrenergy/sqlite3-cmake@3.50.2")
+CPMAddPackage("gh:psrenergy/sqlite3-cmake@3.53.4")
 ```
 
 ## Usage as an installed package
